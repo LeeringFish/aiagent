@@ -24,7 +24,7 @@ def run_python_file(working_directory, file_path, args=[]):
     stdout = completed.stdout
     stderr = completed.stderr
 
-    if not stdout and not stderr == 0:
+    if not stdout and not stderr:
         return "No output produced."
     
     output = f"STDOUT: {stdout}STDERR: {stderr}"

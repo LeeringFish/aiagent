@@ -7,6 +7,7 @@ from functions.get_files_info import schema_get_files_info
 from functions.get_file_content import schema_get_file_content
 from functions.run_python_file import schema_run_python_file
 from functions.write_file import schema_write_file
+from call_function import call_function
 
 def main():
     verbose = False
@@ -58,7 +59,11 @@ def main():
     
     if response.function_calls is not None:
         for call in response.function_calls:
-            print(f"Calling function: {call.name}({call.args})")
+            result = call_function(call)
+            if not result.parts[0].function_response.response:
+                raise Exception
+            elif verbose:
+                print(f"-> {result.parts[0].function_response.response}")
     else:
         if verbose:
             print(f"User prompt: {response.text}")
@@ -66,10 +71,7 @@ def main():
             print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
         else:
             print(response.text)
-
-    
-
-    
+  
 
 
 if __name__ == "__main__":
