@@ -1,5 +1,6 @@
 import os
 import subprocess
+from google.genai import types
 
 def run_python_file(working_directory, file_path, args=[]):
     parent_path = os.path.abspath(working_directory)
@@ -33,3 +34,25 @@ def run_python_file(working_directory, file_path, args=[]):
     
     return output
 
+
+schema_run_python_file = types.FunctionDeclaration(
+    name="run_python_file",
+    description="Use this when the user asks to run a Python file; execute the Python" \
+                    "file at file_path and optionally pass CLI arguments args (list of strings)",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="The file to run, relative to the working directory.",
+            ),
+
+            "args": types.Schema(
+                type=types.Type.ARRAY,
+                items=types.Schema(type=types.Type.STRING),
+                description="Optional CLI arguments to pass to the script"
+            ),
+        },
+        required=["file_path"]
+    ),
+)
