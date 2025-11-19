@@ -32,6 +32,8 @@ def main():
     - Write or overwrite files
 
     All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
+
+    Use the tools to find and read project files; do not ask the user for file paths.
     """
 
     load_dotenv()
@@ -51,26 +53,49 @@ def main():
         types.Content(role="user", parts=[types.Part(text=user_prompt)])
     ]
 
-    response = client.models.generate_content(model="gemini-2.0-flash-001", 
-                                              contents=messages,
-                                              config=types.GenerateContentConfig(
-                                                  tools=[available_functions],system_instruction=system_prompt
-                                              ),)
-    
-    if response.function_calls is not None:
-        for call in response.function_calls:
-            result = call_function(call)
-            if not result.parts[0].function_response.response:
-                raise Exception
-            elif verbose:
-                print(f"-> {result.parts[0].function_response.response}")
-    else:
-        if verbose:
-            print(f"User prompt: {response.text}")
-            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-        else:
-            print(response.text)
+    try:
+        for _ in range(20):
+            response = client.models.generate_content(model="gemini-2.0-flash-001", 
+                                                    contents=messages,
+                                                    config=types.GenerateContentConfig(
+                                                        tools=[available_functions],system_instruction=system_prompt
+                                                    ),)
+            
+            if verbose:
+                print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+                print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+
+            function_call_parts = []
+
+            for candidate in response.candidates:
+                messages.append(candidate.content)
+                for part in candidate.content.parts:
+                    if getattr(part, "function_call", None):
+                        function_call_parts.append(part)
+            
+            if response.text and not function_call_parts:
+                print("\n------\n")
+                print(response.text)
+                break
+            else:
+                function_responses = []
+                for part in function_call_parts:
+                    result = call_function(part.function_call, verbose)
+                    if not result.parts[0].function_response.response:
+                        raise Exception("empty function call result")
+                    
+                    if verbose:
+                        print(f"-> {result.parts[0].function_response.response}")
+                    function_responses.append(result.parts[0])
+
+                if not function_responses:
+                    raise Exception("no function responses generated, exiting.")
+
+                messages.append(types.Content(role="user", parts=function_responses))
+
+
+    except Exception as e:
+        print(f"Error: {e}")
   
 
 
